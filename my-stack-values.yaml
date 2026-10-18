@@ -1,0 +1,72 @@
+# ==============================================================================
+# 1. Хранилище (VMSingle) на NFS
+# ==============================================================================
+vmsingle:
+  enabled: true
+  spec:
+    storage:
+      storageClassName: "nfs-storage"
+      resources:
+        requests:
+          storage: 2Gi
+  # Включаем Ingress для доступа к API VictoriaMetrics (порт 8428)
+  ingress:
+    enabled: true
+    ingressClassName: "nginx"
+    hosts:
+      - vmsingle.local
+    path: /
+
+# ==============================================================================
+# 2. Grafana (NodePort + NFS)
+# ==============================================================================
+grafana:
+  enabled: true
+  persistence:
+    enabled: true
+    storageClassName: "nfs-storage"
+    size: 1Gi
+  service:
+    type: NodePort
+    port: 80
+    nodePort: 30080
+  # Ingress для Grafana (опционально, если хочешь ходить и по домену)
+  ingress:
+    enabled: true
+    ingressClassName: "nginx"
+    hosts:
+      - grafana.local
+
+# ==============================================================================
+# 3. VMAgent (Ingress для просмотра /targets)
+# ==============================================================================
+vmagent:
+  enabled: true
+  # Используем Ingress вместо serviceSpec
+  ingress:
+    enabled: true
+    ingressClassName: "nginx"
+    hosts:
+      - vmagent.local
+
+# ==============================================================================
+# 4. VMAlert (Ingress для UI)
+# ==============================================================================
+vmalert:
+  enabled: true
+  ingress:
+    enabled: true
+    ingressClassName: "nginx"
+    hosts:
+      - vmalert.local
+
+# ==============================================================================
+# 5. Alertmanager (Ingress для UI)
+# ==============================================================================
+alertmanager:
+  enabled: true
+  ingress:
+    enabled: true
+    ingressClassName: "nginx"
+    hosts:
+      - alertmanager.local
