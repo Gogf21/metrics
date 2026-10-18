@@ -1,0 +1,26 @@
+# Привязка к ноде k8s-3
+nodeSelector:
+  alertmanager-node: "true"
+
+# Хранение
+persistence:
+  enabled: true
+  storageClassName: "manual"
+  size: "2Gi"
+  accessModes:
+    - ReadWriteOnce
+
+# NodePort для доступа к UI
+service:
+  type: NodePort
+  port: 9093
+  nodePort: 30093
+
+# Ресурсы
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

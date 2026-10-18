@@ -1,0 +1,33 @@
+# Отключаем встроенный Alertmanager, так как он у нас уже есть
+alertmanager:
+  enabled: false
+
+server:
+  # 1. Куда vmalert будет ходить за метриками (твоя VictoriaMetrics)
+  datasource:
+    url: http://victoriametrics-victoria-metrics-single-server.monitoring.svc.cluster.local:8428
+
+  # 2. Куда vmalert будет сохранять состояние алертов (тоже VictoriaMetrics)
+  remote:
+    write:
+      url: http://victoriametrics-victoria-metrics-single-server.monitoring.svc.cluster.local:8428
+    read:
+      url: http://victoriametrics-victoria-metrics-single-server.monitoring.svc.cluster.local:8428
+
+  # 3. Куда отправлять загоревшиеся алерты (твой существующий Alertmanager)
+  notifier:
+    url: http://alertmanager.monitoring.svc.cluster.local:9093
+
+  # 4. Простые правила для проверки (потом заменишь на свои)
+  config:
+    alerts:
+      groups:
+        - name: "vm-health"
+          rules:
+            - alert: "TooManyRestarts"
+              expr: changes(process_start_time_seconds{job=~"victoriametrics|vmagent|vmalert"}[15m]) > 2
+              for: 2m
+              labels:
+                severity: "warning"
+              annotations:
+                summary: "Слишком частые перезапуски компонента VictoriaMetrics"

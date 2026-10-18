@@ -1,0 +1,51 @@
+rbac:
+  create: false
+  pspEnabled: false
+
+serviceAccount:
+  create: false
+
+server:
+  retentionPeriod: 1d
+  extraArgs:
+    selfScrapeInterval: "15s"
+    loggerLevel: "INFO"
+
+  # Жесткая привязка к ноде, где создан PV (hostPath)
+  nodeSelector:
+    vm-node: "true"
+
+  # ВАКЦИНА ОТ TAINT (Tolerations)
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/master"
+      operator: "Exists"
+      effect: "NoSchedule"
+
+  # Используем наш ручной PV
+  persistentVolume:
+    enabled: true
+    storageClassName: "manual"
+    size: "2Gi"
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 500Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+  service:
+    type: NodePort
+    port: 9090
+    nodePort: 30090
+
+  statefulSet:
+    enabled: true
+    podManagementPolicy: Parallel
+
+scrape:
+  enabled: false

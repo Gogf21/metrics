@@ -1,0 +1,11 @@
+env:
+  - name: ALERTMANAGER_URI
+    value: http://alertmanager.monitoring.svc.cluster.local:9093
+
+service:
+  type: NodePort
+  port: 80
+  nodePort: 30095
+
+ingress:
+  enabled: false

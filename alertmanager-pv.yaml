@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: alertmanager-pv
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: "/mnt/data/alertmanager"
+    type: DirectoryOrCreate
+  # ВОТ ЭТА ЧАСТЬ:
+  claimRef:
+    namespace: monitoring
+    name: storage-alertmanager-0

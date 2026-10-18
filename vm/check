@@ -1,0 +1,43 @@
+victoria-metrics-single:
+  rbac:
+    create: false
+    pspEnabled: false
+  serviceAccount:
+    create: false
+
+  server:
+    retentionPeriod: 6h
+    extraArgs:
+      selfScrapeInterval: "15s"
+      loggerLevel: "INFO"
+
+    # Жесткая привязка к ноде, где создан PV (hostPath)
+    nodeSelector:
+      vm-node: "true"
+
+    # Используем наш ручной PV
+    persistentVolume:
+      enabled: true
+      storageClassName: "manual"
+      size: "2Gi"
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 500Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+
+    # Доступ через NodePort
+    service:
+      type: NodePort
+      port: 9090
+      nodePort: 30090  # можешь раскомментировать, если хочешь жестко задать порт
+
+    statefulSet:
+      enabled: true
+      podManagementPolicy: Parallel
+
+  scrape:
+    enabled: false
