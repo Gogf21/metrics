@@ -1,20 +1,28 @@
 # ОТЧЕТ: РАЗВЕРТЫВАНИЕ СТЕКА МОНИТОРИНГА VICTORIAMETRICS
 
 ## 1. АРХИТЕКТУРА СТЕКА
+
 Стек развернут в неймспейсе `monitoring` на bare-metal кластере (kubeadm). 
-Поток данных: 
-[Node Exporter] / [Kube-State-Metrics] -> [VMAgent] -> [VictoriaMetrics] -> [Grafana] (визуализация)
-                                                             -> [VMAlert] -> [Alertmanager] (алерты)
+
+Поток данных:
+`[Node Exporter] / [Kube-State-Metrics]` -> `[VMAgent]` -> `[VictoriaMetrics]` -> `[Grafana]` (визуализация)
+                                                            |
+                                                            -> `[VMAlert]` -> `[Alertmanager]` (алерты)
 
 ## 2. РЕПОЗИТОРИИ И УСТАНОВКА
 
 Перед установкой были добавлены необходимые Helm-репозитории:
+
+```bash
 helm repo add vm https://victoriametrics.github.io/helm-charts/
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
+```
 
 Команды установки компонентов:
+
+```bash
 helm install victoriametrics vm/victoria-metrics-single -n monitoring -f victoriametrics-values.yaml
 helm install vmagent vm/victoria-metrics-agent -n monitoring -f vmagent-values.yaml
 helm install prometheus-node-exporter prometheus-community/prometheus-node-exporter -n monitoring
@@ -22,22 +30,27 @@ helm install kube-state-metrics prometheus-community/kube-state-metrics -n monit
 helm install grafana grafana/grafana -n monitoring -f grafana-values.yaml
 helm install alertmanager prometheus-community/alertmanager -n monitoring -f alertmanager-values.yaml
 helm install vmalert vm/victoria-metrics-alert -n monitoring -f vmalert-values.yaml
+```
 
 ## 3. ОСОБЕННОСТИ РАЗВЕРТЫВАНИЯ (STORAGE & NETWORK)
-Из-за отсутствия динамического StorageClass в bare-metal кластере, использованы локальные PV (hostPath) с привязкой к нодам:
-- VictoriaMetrics -> нода k8s-1 (лейбл vm-node=true)
-- Grafana -> нода k8s-2 (лейбл grafana-node=true)
-- Alertmanager -> нода k8s-3 (лейбл alertmanager-node=true)
+
+Из-за отсутствия динамического StorageClass в bare-metal кластере, использованы локальные PV (`hostPath`) с привязкой к нодам:
+
+*   **VictoriaMetrics** -> нода `k8s-1` (лейбл `vm-node=true`)
+*   **Grafana** -> нода `k8s-2` (лейбл `grafana-node=true`)
+*   **Alertmanager** -> нода `k8s-3` (лейбл `alertmanager-node=true`)
 
 Сетевой доступ (NodePort):
-- VictoriaMetrics: 30090
-- Grafana: 30080
-- Alertmanager: 30093
+*   **VictoriaMetrics**: `30090`
+*   **Grafana**: `30080`
+*   **Alertmanager**: `30093`
 
 ## 4. КОНФИГУРАЦИОННЫЕ ФАЙЛЫ (values.yaml)
 
-### 4.1. VictoriaMetrics (vm-pv.yaml + values.yaml)
-Создание диска (vm-pv.yaml):
+### 4.1. VictoriaMetrics
+
+Создание диска (`vm-pv.yaml`):
+```yaml
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -50,8 +63,10 @@ spec:
   hostPath:
     path: "/mnt/data/victoria-metrics"
     type: DirectoryOrCreate
+```
 
-Установка (victoriametrics-values.yaml):
+Установка (`victoriametrics-values.yaml`):
+```yaml
 rbac:
   create: false
 server:
@@ -70,8 +85,11 @@ server:
     type: NodePort
     port: 9090
     nodePort: 30090
+```
 
-### 4.2. VMAgent (vmagent-values.yaml)
+### 4.2. VMAgent (`vmagent-values.yaml`)
+
+```yaml
 remoteWrite:
   - url: http://victoriametrics-victoria-metrics-single-server.monitoring.svc.cluster.local:8428/api/v1/write
 persistence:
@@ -87,9 +105,11 @@ extraScrapeConfigs:
   - job_name: 'kube-state-metrics'
     static_configs:
       - targets: [ 'kube-state-metrics.monitoring.svc.cluster.local:8080' ]
+```
 
-### 4.3. Grafana (grafana-pv.yaml + values.yaml)
-Установка (grafana-values.yaml):
+### 4.3. Grafana (`grafana-values.yaml`)
+
+```yaml
 nodeSelector:
   grafana-node: "true"
 persistence:
@@ -108,9 +128,11 @@ datasources:
         type: prometheus
         url: http://victoriametrics-victoria-metrics-single-server.monitoring.svc.cluster.local:8428
         isDefault: true
+```
 
-### 4.4. Alertmanager (alertmanager-pv.yaml + values.yaml)
-Установка (alertmanager-values.yaml):
+### 4.4. Alertmanager (`alertmanager-values.yaml`)
+
+```yaml
 nodeSelector:
   alertmanager-node: "true"
 persistence:
@@ -121,8 +143,11 @@ service:
   type: NodePort
   port: 9093
   nodePort: 30093
+```
 
-### 4.5. VMAlert (vmalert-values.yaml)
+### 4.5. VMAlert (`vmalert-values.yaml`)
+
+```yaml
 alertmanager:
   enabled: false
 server:
@@ -140,16 +165,20 @@ server:
           rules:
             - alert: "TooManyRestarts"
               expr: changes(process_start_time_seconds[15m]) > 2
+```
 
 ## 5. ИНСТРУКЦИЯ ПО ПРОВЕРКЕ
-1. Проверить статус подов:
-   kubectl -n monitoring get pods
 
-2. VictoriaMetrics (http://<IP>:30090):
+1. Проверить статус подов:
+   ```bash
+   kubectl -n monitoring get pods
+   ```
+
+2. **VictoriaMetrics** (`http://<IP>:30090`):
    Ввести запрос `up`. Отобразятся все таргеты.
 
-3. Grafana (http://<IP>:30080, admin/admin):
-   Проверить Connections -> Data Sources (VictoriaMetrics должна быть зеленой).
+3. **Grafana** (`http://<IP>:30080`, admin/admin):
+   Проверить `Connections -> Data Sources` (VictoriaMetrics должна быть зеленой).
 
-4. Alertmanager (http://<IP>:30093):
+4. **Alertmanager** (`http://<IP>:30093`):
    Проверить наличие алертов.
