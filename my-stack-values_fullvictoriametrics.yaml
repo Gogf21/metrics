@@ -4,6 +4,9 @@
 vmsingle:
   enabled: true
   spec:
+    # Настройка автоматического удаления старых данных
+    extraArgs:
+      retentionPeriod: "1d"  # <-- Хранить данные 1 день (24 часа)
     storage:
       storageClassName: "nfs-storage"
       resources:
@@ -25,7 +28,7 @@ grafana:
   persistence:
     enabled: true
     storageClassName: "nfs-storage"
-    size: 1Gi
+    size: 3Gi
   service:
     type: NodePort
     port: 80
